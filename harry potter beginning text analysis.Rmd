@@ -1,0 +1,450 @@
+---
+title: "Harry Potter"
+author: "Max Schleicher"
+date: "11/5/2020"
+output: html_document
+---
+A great resource: https://www.tidytextmining.com/index.html
+
+```
+library(dplyr)
+library(stringr)
+library(tidytext)
+library(tidyr)
+library(ggplot2)
+library(tidyverse)
+
+```
+#1. Sentiment analysis. 
+
+#1.1 Load, clean, and unnest text
+  setwd("/Users/maxschleicher/Desktop/R/Digital Matters/hp texts")
+  hp1 <- scan("hp1.txt", character(0), sep = "\n") # separate each line;
+  hp1 <- data.frame(hp1)
+  hp1$hp1 <- as.character(hp1$hp1)
+
+  #add column for row numbers
+  tidy_hp1 <- hp1 %>%
+    mutate(linenumber = row_number())
+  
+  #add column for chapter
+  tidy_hp1 <- tidy_hp1 %>%
+     mutate(chapter = cumsum(str_detect(tidy_hp1$hp1, regex("^chapter [\\divxlc]",ignore_case = TRUE))))
+  
+  #tidy hp1, unnest lines into individual words. 
+  tidy_hp1 <- tidy_hp1 %>%
+    unnest_tokens(word, hp1)
+    
+#1.2 Join with sentiment data
+
+  tidy_hp1_sentiment <- tidy_hp1 %>%
+    inner_join(get_sentiments("bing"))
+    
+#1.2.1 Make a visualization that shows how average sentiment score moves every 80 lines of text 
+  hp1_sentiment_80_lines <- tidy_hp1 %>%
+    inner_join(get_sentiments("bing")) %>%
+    count(index = linenumber %/% 80, sentiment) %>%
+    spread(sentiment, n, fill = 0) %>%
+    mutate(sentiment = positive - negative)
+  
+  ggplot(hp1_sentiment_80_lines, aes(index, sentiment, fill = sentiment)) +
+    geom_col(show.legend = FALSE) +
+    theme_minimal() +
+    scale_fill_gradient(low="blue", high="green") +
+    labs(title = "Sentiment Scores for every 80 lines of text")
+    
+  ggplot(hp1_sentiment_80_lines, aes(index, sentiment, fill = sentiment)) +
+    geom_smooth(show.legend = FALSE, se = FALSE) +
+    scale_fill_gradient(low="blue", high="green") +
+    labs(title = "Sentiment Scores by Index")
+    
+#1.2.2  Make a visualization that shows how average sentiment score moves from chapter to chapter 
+  hp1_sentiment_chapter <- tidy_hp1 %>%
+    inner_join(get_sentiments("bing")) %>%
+    count(chapter, sentiment) %>%
+    spread(sentiment, n, fill = 0) %>%
+    mutate(sentiment = positive - negative)
+      
+  ggplot(hp1_sentiment_chapter, aes(chapter, sentiment, fill = sentiment)) +
+    geom_col(show.legend = FALSE) + 
+    scale_fill_gradient(low="blue", high="green") +
+    labs(title = "Sentiment Scores by Chapter in HP 1")
+  
+#1.3 Check out the top sentiment words
+
+bing_word_counts <- tidy_hp1 %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+#1.3.1 visualize top 10 positive and negative words
+  bing_word_counts %>%
+    group_by(sentiment) %>%
+    top_n(10) %>%
+    ungroup() %>%
+    mutate(word = reorder(word, n)) %>%
+    ggplot(aes(word, n, fill = sentiment)) +
+    geom_col(show.legend = FALSE) +
+    facet_wrap(~sentiment, scales = "free_y") +
+    labs(y = "Contribution to sentiment",
+         x = NULL) +
+    coord_flip()
+  
+#1.3.2 Visualize top 30 together  
+  bing_word_counts %>%
+    group_by(sentiment) %>%
+    top_n(30) %>%
+    ungroup() %>%
+    mutate(word = reorder(word, n)) %>%
+    ggplot(aes(word, n, fill = sentiment)) +
+    geom_col(position = position_dodge()) +
+    labs(y = "Contribution to sentiment",
+         x = NULL) +
+    coord_flip()
+
+#2. Combine 7 books into one dataframe 
+
+hp1 <- scan("hp1.txt", character(0), sep = "\n") #separate each line
+hp1 <- data.frame(hp1)
+hp1$hp1 <- as.character(hp1$hp1)
+hp1['book'] = 'hp1'
+hp1 <- hp1 %>% rename(line = hp1)
+hp1 <- hp1 %>%
+  mutate(linenumber = row_number())
+#add column for chapter
+hp1 <- hp1 %>%
+   mutate(chapter = cumsum(str_detect(hp1$line, regex("^chapter [\\divxlc]",ignore_case = TRUE))))
+#add column for index position
+hp1 <- hp1 %>%
+   mutate(index_position = linenumber / nrow(hp1) * 100)
+
+hp2 <- scan("hp2.txt", character(0), sep = "\n") # separate each line;
+hp2 <- data.frame(hp2)
+hp2$hp2 <- as.character(hp2$hp2)
+hp2['book'] = 'hp2'
+hp2 <- hp2 %>% rename(line = hp2)
+hp2 <- hp2 %>%
+  mutate(linenumber = row_number())
+#add column for chapter
+hp2 <- hp2 %>%
+   mutate(chapter = cumsum(str_detect(hp2$line, regex("^chapter [\\divxlc]",ignore_case = TRUE))))
+hp2 <- hp2 %>%
+   mutate(index_position = linenumber / nrow(hp2) * 100)
+
+
+hp3 <- scan("hp3.txt", character(0), sep = "\n") # separate each line;
+hp3 <- data.frame(hp3)
+hp3$hp3 <- as.character(hp3$hp3)
+hp3['book'] = 'hp3'
+hp3 <- hp3 %>% rename(line = hp3)
+hp3 <- hp3 %>%
+  mutate(linenumber = row_number())
+#add column for chapter
+hp3 <- hp3 %>%
+   mutate(chapter = cumsum(str_detect(hp3$line, regex("^chapter [\\divxlc]",ignore_case = TRUE))))
+hp3 <- hp3 %>%
+   mutate(index_position = linenumber / nrow(hp3) * 100)
+
+hp4 <- scan("hp4.txt", character(0), sep = "\n") # separate each line;
+hp4 <- data.frame(hp4)
+hp4$hp4 <- as.character(hp4$hp4)
+hp4['book'] = 'hp4'
+hp4 <- hp4 %>% rename(line = hp4)
+hp4 <- hp4 %>%
+  mutate(linenumber = row_number())
+#add column for chapter
+hp4 <- hp4 %>%
+   mutate(chapter = cumsum(str_detect(hp4$line, regex("^chapter [\\divxlc]",ignore_case = TRUE))))
+hp4 <- hp4 %>%
+   mutate(index_position = linenumber / nrow(hp4) * 100)
+
+
+hp5 <- scan("hp5.txt", character(0), sep = "\n") # separate each line;
+hp5 <- data.frame(hp5)
+hp5$hp5 <- as.character(hp5$hp5)
+hp5['book'] = 'hp5'
+hp5 <- hp5 %>% rename(line = hp5)
+hp5 <- hp5 %>%
+  mutate(linenumber = row_number())
+#add column for chapter
+hp5 <- hp5 %>%
+   mutate(chapter = cumsum(str_detect(hp5$line, regex("^chapter [\\divxlc]",ignore_case = TRUE))))
+hp5 <- hp5 %>%
+   mutate(index_position = linenumber / nrow(hp5) * 100)
+
+
+hp6 <- scan("hp6.txt", character(0), sep = "\n") # separate each line;
+hp6 <- data.frame(hp6)
+hp6$hp6 <- as.character(hp6$hp6)
+hp6['book'] = 'hp6'
+hp6 <- hp6 %>% rename(line = hp6)
+hp6 <- hp6 %>%
+  mutate(linenumber = row_number())
+#add column for chapter
+hp6 <- hp6 %>%
+   mutate(chapter = cumsum(str_detect(hp6$line, regex("^chapter [\\divxlc]",ignore_case = TRUE))))
+hp6 <- hp6 %>%
+   mutate(index_position = linenumber / nrow(hp6) * 100)
+
+hp7 <- scan("hp7.txt", character(0), sep = "\n") # separate each line;
+hp7 <- data.frame(hp7)
+hp7$hp7 <- as.character(hp7$hp7)
+hp7['book'] = 'hp7'
+hp7 <- hp7 %>% rename(line = hp7)
+hp7 <- hp7 %>%
+  mutate(linenumber = row_number())
+#add column for chapter
+hp7 <- hp7 %>%
+   mutate(chapter = cumsum(str_detect(hp7$line, regex("^chapter [\\divxlc]",ignore_case = TRUE))))
+hp7 <- hp7 %>%
+   mutate(index_position = linenumber / nrow(hp7) * 100)
+
+#combine the 7 books into one table 
+hp_total <- rbind(hp1,hp2,hp3,hp4,hp5,hp6,hp7)
+
+#add a corpus line number so we can graph the books consecutively
+hp_total <- hp_total %>%
+        mutate(corpus_linenumber = row_number())
+
+#unnest each line into individual words
+tidy_hp_total <- hp_total %>%
+  unnest_tokens(word, line)
+  
+#2.1 Visualize sentiments of all 7 by chapter 
+hp_sentiment_chapter <- tidy_hp_total %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, chapter, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+    
+ggplot(hp_sentiment_chapter, aes(chapter, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) + 
+  facet_wrap(~book, ncol = 2, scales = "free_x") 
+
+#2.3 Visualize by index
+#2.3.1 Score sentiments in 80 line segments
+hp_sentiment_80_lines <- tidy_hp_total %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = linenumber %/% 80, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+  
+#2.3.1.1 visualizations
+#column graphs in tile
+  ggplot(hp_sentiment_80_lines, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) + 
+  facet_wrap(~book, ncol = 2, scales = "free_x")  
+  
+#path graphs in tile
+  ggplot(hp_sentiment_80_lines, aes(index, sentiment, fill = book)) +
+    geom_path(show.legend = FALSE) + 
+    facet_wrap(~book, ncol = 2, scales = "free_x")  
+  
+#overlapped path plot using 80 line chunks
+  ggplot(hp_sentiment_80_lines, aes(index, sentiment, color = book)) +
+    geom_path(show.legend = FALSE) 
+  
+#smoothed overlapped path plot using 80 line chunks
+  ggplot(hp_sentiment_80_lines, aes(index, sentiment, color = book)) +
+    geom_smooth(show.legend = TRUE, se = FALSE) 
+
+#2.3.2 using index position. (When importing and formatting the books I added calculated column "index_position", which puts every line of every book on a scale of 1-100. This allows me to look at all books on the same scale—otherwise because the later books are much much longer than the earlier ones the visualization would look a little wonky)
+
+hp_sentiment_ip <- tidy_hp_total %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = index_position, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+  
+#2.3.2.1 Visualizations
+#smoothed overlapped path plot using index position
+  ggplot(hp_sentiment_ip, aes(index, sentiment, color = book)) +
+    geom_smooth(show.legend = TRUE, se = FALSE)  
+  
+#tiled smoothed split path plots using index position
+  ggplot(hp_sentiment_ip, aes(index, sentiment, color = book)) +
+    geom_smooth(show.legend = FALSE, se = FALSE) +
+      facet_wrap(~book, ncol = 2, scales = "free_x")  
+    
+
+#2.3.4 Look at sentiment for the whole series of books continuously. 
+hp_sentiment_corpus <- tidy_hp_total %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = corpus_linenumber %/% 700, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+  
+#2.3.4.1 Visualizations
+#smoothed continuous path plot using index position
+  ggplot(hp_sentiment_corpus, aes(index, sentiment, color = book)) +
+    #geom_smooth(show.legend = TRUE, se = FALSE)  
+    geom_path(show.legend = TRUE)  
+
+#smoothed split path plot using index position
+  ggplot(hp_sentiment_corpus, aes(index, sentiment, color = book)) +
+    geom_smooth(show.legend = TRUE, se = FALSE) +
+      facet_wrap(~book, ncol = 2, scales = "free_x") 
+  
+#3. Spell frequency
+#reload the txt files into a new corpus.I've already set the working-directory above, so I skipped that step here. 
+
+filelist = list.files(pattern = ".*.txt")
+hp_spell_corpus <- unlist(lapply(filelist, FUN=scan, character(0), sep = "\n"))
+hp_spell_corpus <- data.frame(hp_spell_corpus)
+hp_spell_corpus <- rename(hp_spell_corpus, line = hp_spell_corpus)
+hp_spell_corpus$line <- as.character(hp_spell_corpus$line)
+#add column for row numbers
+hp_spell_corpus <- hp_spell_corpus %>% mutate(linenumber = row_number())
+
+#unnest lines into individual words. 
+tidy_hp_spell_corpus <- hp_spell_corpus %>%
+  unnest_tokens(word, line)
+
+# get spells from spell_key spreadsheet
+spells <- read.csv("spell_key.csv", header = TRUE)
+spells$word <- as.character(spells$word)
+spells$word  <- tolower(spells$word)
+
+#filter out spell incantations that use normal words (and are actually uncommon in Harry Potter texts). These include "none", "point", "pack". 
+
+spells <- spells %>% filter(
+  word != "none" & 
+  word != "point" & 
+  word != "pack" & 
+  word != "cave" )
+
+#join and filter out NAs
+spells_joined <- tidy_hp_spell_corpus %>% left_join(spells)
+spells_joined <- spells_joined %>% filter(!is.na(Name))
+spells_joined$Name <- as.character(spells_joined$Name)
+spells_joined$linenumber <- as.numeric(spells_joined$linenumber)
+
+#3.1 Spell visualizations
+
+#bar chart 
+    ggplot(spells_joined, aes(Type)) + 
+    geom_bar(stat = "count") 
+
+#stacked bar with name of spell 
+    ggplot(spells_joined, aes(fill=Name, x=Type)) + 
+        geom_bar(show.legend = FALSE) +     
+        geom_text(aes(label=Name),stat="count",position=position_stack(0.5),size=2)
+
+#geom_point 
+      ggplot(spells_joined, aes(Type, linenumber, color = Type)) + 
+        geom_point() + 
+          theme(legend.position = "none") + 
+          scale_y_continuous(labels = comma) +
+              coord_flip()
+            
+#dot plot
+      ggplot(spells_joined, aes(Type, linenumber, color = Type)) +
+        geom_dotplot(show.legend = FALSE, binaxis = "y", 
+              stackdir ="center", method = "dotdensity", 
+              dotsize = .5, stackratio = .5) +
+          coord_flip() +
+          scale_y_continuous(labels = comma) + 
+           theme(plot.title = element_text(hjust = 0.5))+ 
+            labs(title = "Spells Cast in Harry Potter") +
+            ylab("Line of book") +
+            xlab("Spell type")
+      
+#circular bar chart, adapted from here https://www.r-graph-gallery.com/297-circular-barplot-with-groups.html
+  
+# Create dataset for circular bar
+      data <- data.frame(
+                count(spells_joined, Name, Type)
+                  )
+      data <- rename(data,individual = Name,group = Type, value = n)
+      data = data %>% arrange(group, value)
+      
+# Set a number of 'empty bar' to add at the end of each group
+      empty_bar <- 1
+      to_add <- data.frame( matrix(NA, empty_bar*nlevels(data$group), ncol(data)) )
+      colnames(to_add) <- colnames(data)
+      to_add$group <- rep(levels(data$group), each=empty_bar)
+      data <- rbind(data, to_add)
+      data <- data %>% arrange(group)
+      data$id <- seq(1, nrow(data))
+     
+# Get the name and the y position of each label
+      label_data <- data
+      number_of_bar <- nrow(label_data)
+      angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
+      label_data$hjust <- ifelse( angle < -90, 1, 0)
+      label_data$angle <- ifelse(angle < -90, angle+180, angle)
+     
+# Make the plot
+      p <- ggplot(data, aes(x=as.factor(id), y=value, fill=group)) +       # Note that id is a factor. If x is numeric, there is some space between the first bar
+        geom_bar(stat="identity", alpha=0.5) +
+        ylim(-100,100) +
+        theme_minimal() +
+        theme(
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          panel.grid = element_blank(),
+          plot.margin = unit(c(1,1,1,1), "cm") 
+        ) +
+        coord_polar() + 
+        geom_text(data=label_data, aes(x=id, y=value+10, label=individual, hjust=hjust), color="black", fontface="bold",alpha=0.6, size=2.5, angle= label_data$angle, inherit.aes = FALSE ) + theme(plot.title = element_text(hjust = 0.5))+ 
+        labs(title = "Spell Incantations in Harry Potter", fill = "Spell Type")
+      p
+
+#4. Word frequency 
+#4.1. Get word counts by book
+book_words <- hp_total %>%
+  unnest_tokens(word, line) %>%
+  count(book, word, sort = TRUE)
+
+total_words <- book_words %>%
+  group_by(book) %>%
+  summarize(total = sum(n))
+
+#4.1.1 visualizations of word distribution
+#plot distributions
+    ggplot(book_words, aes(n / total, fill = book)) +
+      geom_histogram(show.legend = FALSE) +
+      xlim(NA, 0.0009) +
+      facet_wrap(~book, ncol = 2, scales = "free_y")
+  
+
+book_words <- left_join(book_words, total_words)
+
+#4.2. Turn word counts by book into ranked frequency tables
+  freq_by_rank <- book_words %>%
+  group_by(book) %>%
+  mutate(
+    rank = row_number(),
+    `term frequency` = n / total
+  )
+
+#4.2.1. Visualization of frequency distributions
+freq_by_rank %>%
+  ggplot(aes(rank, `term frequency`, color = book)) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) +
+  scale_x_log10() +
+  scale_y_log10()
+
+#4.3 Turn into a tf-idf table
+  book_tf_idf <- book_words %>%
+    bind_tf_idf(word, book, n)
+  
+  book_tf_idf %>%
+    select(-total) %>%
+    arrange(desc(tf_idf))
+
+#4.3.1 Visualize most identifiable words for each book (via tf-idf)
+  book_tf_idf %>%
+    arrange(desc(tf_idf)) %>%
+    mutate(word = factor(word, levels = rev(unique(word)))) %>%
+    group_by(book) %>%
+    top_n(15) %>%
+    ungroup() %>%
+    ggplot(aes(word, tf_idf, fill = book)) +
+    geom_col(show.legend = FALSE) +
+    labs(x = NULL, y = "tf-idf") +
+    facet_wrap(~book, ncol = 2, scales = "free") +
+    coord_flip()
+
+
+```
